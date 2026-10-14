@@ -2,9 +2,10 @@
 
 from pathlib import Path
 from typing import Any, Dict, List
+
 import numpy as np
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 import torch
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from wastesort_ml.dataset.loader import create_dataloader
 from wastesort_ml.dataset.taxonomy import TAXONOMY_CLASSES
 from wastesort_ml.models.classifier import WasteClassifier

@@ -1,6 +1,7 @@
 """Coverage vs Risk evaluation for calibrating operational thresholds."""
 
 from typing import Any, Dict
+
 import numpy as np
 from wastesort_ml.evaluation.uncertainty import UncertaintyPostProcessor
 
