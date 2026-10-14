@@ -3,9 +3,10 @@
 import hashlib
 import json
 import random
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Dict, Set
+from typing import Dict, List
+
 from wastesort_ml.dataset.taxonomy import CLASS_TO_INDEX, TAXONOMY_CLASSES
 
 
@@ -34,11 +35,10 @@ class DatasetManifest:
     def add_sample(self, file_path: Path, class_name: str, session_id: str) -> bool:
         if class_name not in CLASS_TO_INDEX:
             raise ValueError(f"Unknown class: {class_name}. Must be one of {TAXONOMY_CLASSES}")
-        
+
         sha = self.compute_sha256(file_path)
-        # Deduplication check
         if any(s.sha256 == sha for s in self.samples):
-            return False  # Skip duplicate file
+            return False
 
         sample = ImageSample(
             image_path=str(file_path.resolve()),
@@ -50,10 +50,11 @@ class DatasetManifest:
         self.samples.append(sample)
         return True
 
-    def split(self, train_ratio: float = 0.70, val_ratio: float = 0.15, test_ratio: float = 0.15) -> Dict[str, List[ImageSample]]:
+    def split(
+        self, train_ratio: float = 0.70, val_ratio: float = 0.15, test_ratio: float = 0.15
+    ) -> Dict[str, List[ImageSample]]:
         assert abs((train_ratio + val_ratio + test_ratio) - 1.0) < 1e-5, "Ratios must sum to 1.0"
-        
-        # Group samples by session to prevent leakage
+
         sessions: Dict[str, List[ImageSample]] = {}
         for sample in self.samples:
             sessions.setdefault(sample.session_id, []).append(sample)
@@ -68,7 +69,6 @@ class DatasetManifest:
 
         train_sessions = set(session_keys[:train_end])
         val_sessions = set(session_keys[train_end:val_end])
-        test_sessions = set(session_keys[val_end:])
 
         splits: Dict[str, List[ImageSample]] = {"train": [], "val": [], "test": []}
 
@@ -82,7 +82,7 @@ class DatasetManifest:
 
         return splits
 
-    def save_split_manifests(self, splits: Dict[str, List[ImageSample]], output_dir: Path):
+    def save_split_manifests(self, splits: Dict[str, List[ImageSample]], output_dir: Path) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
         for split_name, items in splits.items():
             manifest_file = output_dir / f"{split_name}_manifest.json"

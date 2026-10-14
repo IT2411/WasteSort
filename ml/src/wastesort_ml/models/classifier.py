@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+from torchvision.models import MobileNet_V3_Small_Weights, mobilenet_v3_small
 from wastesort_ml.dataset.taxonomy import NUM_CLASSES
 
 

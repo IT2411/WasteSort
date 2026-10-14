@@ -1,18 +1,19 @@
 """Baseline training pipeline for WasteClassifier."""
 
 from pathlib import Path
-from typing import Dict
+from typing import Sized, cast
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from wastesort_ml.models.classifier import WasteClassifier
+from torch.utils.data import DataLoader
 from wastesort_ml.dataset.loader import create_dataloader
+from wastesort_ml.models.classifier import WasteClassifier
 
 
 def train_epoch(
     model: nn.Module,
-    loader: torch.utils.data.DataLoader,
+    loader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
@@ -27,12 +28,14 @@ def train_epoch(
         loss.backward()
         optimizer.step()
         running_loss += loss.item() * images.size(0)
-    return running_loss / len(loader.dataset)
+
+    dataset_size = len(cast(Sized, loader.dataset))
+    return running_loss / dataset_size if dataset_size > 0 else 0.0
 
 
 def evaluate_loss(
     model: nn.Module,
-    loader: torch.utils.data.DataLoader,
+    loader: DataLoader,
     criterion: nn.Module,
     device: torch.device,
 ) -> float:
@@ -44,7 +47,9 @@ def evaluate_loss(
             outputs = model(images)
             loss = criterion(outputs, targets)
             running_loss += loss.item() * images.size(0)
-    return running_loss / len(loader.dataset)
+
+    dataset_size = len(cast(Sized, loader.dataset))
+    return running_loss / dataset_size if dataset_size > 0 else 0.0
 
 
 def train_baseline(
@@ -63,14 +68,18 @@ def train_baseline(
     optimizer = AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
     scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
 
-    train_loader = create_dataloader(train_manifest, batch_size=batch_size, is_training=True, num_workers=0)
-    val_loader = create_dataloader(val_manifest, batch_size=batch_size, is_training=False, num_workers=0)
+    train_loader = create_dataloader(
+        train_manifest, batch_size=batch_size, is_training=True, num_workers=0
+    )
+    val_loader = create_dataloader(
+        val_manifest, batch_size=batch_size, is_training=False, num_workers=0
+    )
 
     best_val_loss = float("inf")
     best_checkpoint = output_dir / "baseline_model.pth"
 
     for epoch in range(epochs):
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+        _ = train_epoch(model, train_loader, criterion, optimizer, device)
         val_loss = evaluate_loss(model, val_loader, criterion, device)
         scheduler.step()
 

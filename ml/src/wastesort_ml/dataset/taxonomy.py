@@ -1,6 +1,6 @@
 """Centralized taxonomy and class index definitions for WasteSort."""
 
-from typing import List, Dict
+from typing import Dict, List
 
 TAXONOMY_CLASSES: List[str] = [
     "food_organic",

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.spotless)
 }
 
 android {
@@ -25,7 +26,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -53,8 +54,19 @@ android {
         }
     }
 
-    aaptOptions {
-        noCompress("tflite")
+    androidResources {
+        noCompress += "tflite"
+    }
+}
+
+spotless {
+    kotlin {
+        target("**/*.kt")
+        ktlint("1.1.1")
+    }
+    kotlinGradle {
+        target("*.gradle.kts")
+        ktlint("1.1.1")
     }
 }
 

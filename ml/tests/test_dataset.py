@@ -1,14 +1,14 @@
 """Quality gate unit tests for Phase 3: Dataset, Taxonomy, and Leakage Prevention."""
 
 from pathlib import Path
-import pytest
+
+from wastesort_ml.dataset.prepare_fixture import create_fixture_dataset
 from wastesort_ml.dataset.taxonomy import (
-    TAXONOMY_CLASSES,
     CLASS_TO_INDEX,
     INDEX_TO_CLASS,
     NUM_CLASSES,
+    TAXONOMY_CLASSES,
 )
-from wastesort_ml.dataset.prepare_fixture import create_fixture_dataset
 
 
 def test_taxonomy_count_and_sync():

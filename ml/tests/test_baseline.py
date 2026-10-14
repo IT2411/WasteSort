@@ -1,12 +1,13 @@
 """Phase 4 Quality Gate: Model contract dimensions, inference, and training loop validation."""
 
 from pathlib import Path
+
 import torch
-from wastesort_ml.models.classifier import WasteClassifier
 from wastesort_ml.dataset.prepare_fixture import create_fixture_dataset
-from wastesort_ml.training.train import train_baseline
-from wastesort_ml.evaluation.evaluate import evaluate_model
 from wastesort_ml.dataset.taxonomy import NUM_CLASSES
+from wastesort_ml.evaluation.evaluate import evaluate_model
+from wastesort_ml.models.classifier import WasteClassifier
+from wastesort_ml.training.train import train_baseline
 
 
 def test_model_contract_dimensions():
@@ -25,7 +26,9 @@ def test_model_contract_dimensions():
 
     # Softmax probabilities must sum to 1.0 along the class dimension
     sums = probs.sum(dim=-1)
-    assert torch.allclose(sums, torch.ones(batch_size), atol=1e-5), "Probabilities do not sum to 1.0"
+    assert torch.allclose(
+        sums, torch.ones(batch_size), atol=1e-5
+    ), "Probabilities do not sum to 1.0"
 
 
 def test_end_to_end_training_and_evaluation(tmp_path: Path):
