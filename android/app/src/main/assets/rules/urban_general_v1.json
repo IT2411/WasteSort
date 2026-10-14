@@ -1,0 +1,94 @@
+{
+  "profile_id": "urban_general_v1",
+  "version": "1.0.0",
+  "display_name": "Standard 3-Stream Municipal System",
+  "description": "Standard Wet, Dry, and Other waste classification rules for typical urban households.",
+  "streams": {
+    "WET": {
+      "display_name": "Wet Waste",
+      "color_hex": "#2E7D32",
+      "icon_name": "leaf"
+    },
+    "DRY": {
+      "display_name": "Dry Waste",
+      "color_hex": "#1565C0",
+      "icon_name": "recycle"
+    },
+    "OTHER": {
+      "display_name": "Other / Special Handling",
+      "color_hex": "#D84315",
+      "icon_name": "alert"
+    },
+    "NOT_SURE": {
+      "display_name": "Not Sure",
+      "color_hex": "#757575",
+      "icon_name": "help"
+    }
+  },
+  "mappings": {
+    "food_organic": {
+      "stream": "WET",
+      "instruction": "Compostable. Empty into the green wet-waste bin without plastic wrappers."
+    },
+    "garden_waste": {
+      "stream": "WET",
+      "instruction": "Compostable. Keep free of stones, wires, and plastic ties."
+    },
+    "paper": {
+      "stream": "DRY",
+      "instruction": "Recyclable. Keep clean and dry. Avoid if heavily stained with food or grease."
+    },
+    "cardboard": {
+      "stream": "DRY",
+      "instruction": "Recyclable. Flatten boxes. Remove plastic tapes and styrofoam before disposal."
+    },
+    "plastic_bottle_container": {
+      "stream": "DRY",
+      "instruction": "Recyclable. Empty contents and rinse clean before placing in the dry bin."
+    },
+    "plastic_film_flexible": {
+      "stream": "DRY",
+      "instruction": "Recyclable if clean. Bundle flexible wraps together; discard if heavily contaminated."
+    },
+    "glass_bottle_jar": {
+      "stream": "DRY",
+      "instruction": "Recyclable. Rinse thoroughly. Wrap broken glass separately in newspaper and mark 'Broken Glass'."
+    },
+    "metal_can_tin": {
+      "stream": "DRY",
+      "instruction": "Recyclable. Empty liquid or food residues completely."
+    },
+    "textile": {
+      "stream": "DRY",
+      "instruction": "Recyclable/Reusable. Place in textile donation bins or dry recycling if clean."
+    },
+    "e_waste": {
+      "stream": "OTHER",
+      "instruction": "Special stream. Do not throw in household bins. Hand over at designated e-waste collection points."
+    },
+    "battery": {
+      "stream": "OTHER",
+      "instruction": "Hazardous waste. Highly flammable and toxic. Drop off at local battery collection stations."
+    },
+    "sanitary_medical": {
+      "stream": "OTHER",
+      "instruction": "Sanitary/Biomedical waste. Wrap securely in newspaper or red bag. Mark clearly for incineration."
+    },
+    "hazardous_chemical": {
+      "stream": "OTHER",
+      "instruction": "Hazardous waste. Keep containers tightly closed. Drop off at domestic hazardous waste depots."
+    },
+    "mixed_composite_packaging": {
+      "stream": "DRY",
+      "instruction": "Check for local carton/tetra-pak recycling streams. Must be clean and flattened."
+    },
+    "unknown_household_item": {
+      "stream": "NOT_SURE",
+      "instruction": "Unable to categorize with confidence. Check packaging symbols or choose manually."
+    },
+    "background_no_item": {
+      "stream": "NOT_SURE",
+      "instruction": "No item clearly detected in center view. Please point camera directly at one item."
+    }
+  }
+}
