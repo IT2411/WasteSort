@@ -3,6 +3,7 @@ package org.wastesort
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,8 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
@@ -57,7 +61,6 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ScanViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Enable modern Edge-to-Edge display (transparent status & nav bars)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
@@ -94,80 +97,92 @@ fun MainScreen(viewModel: ScanViewModel) {
     val state by viewModel.uiState.collectAsState()
     var showManualDialog by remember { mutableStateOf(false) }
 
-    // Scaffold with zero inner padding so camera extends under status bar
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Black,
-    ) { _ ->
-        Box(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            if (hasCameraPermission) {
-                // Camera extends to the physical edges of the display
-                CameraView(
-                    onImageCaptured = { bitmap, rotationDegrees ->
-                        viewModel.onFrameCaptured(bitmap, rotationDegrees)
-                    },
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        if (hasCameraPermission) {
+            // Live Viewfinder (rendered when scanning)
+            CameraView(
+                isScanningActive = state is ScanUiState.Scanning,
+                onImageCaptured = { orientedBitmap ->
+                    viewModel.onFrameCaptured(orientedBitmap)
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            // Frozen Frame Overlay: stays on screen while analyzing or reviewing result
+            val frozenBitmap = when (val s = state) {
+                is ScanUiState.Analyzing -> s.frozenBitmap
+                is ScanUiState.ResultReady -> s.frozenBitmap
+                else -> null
+            }
+
+            if (frozenBitmap != null) {
+                Image(
+                    bitmap = frozenBitmap.asImageBitmap(),
+                    contentDescription = "Frozen Analysis Frame",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                 )
-
-                // Viewfinder Reticle Centered
-                Box(
-                    modifier = Modifier
-                        .size(250.dp)
-                        .align(Alignment.Center)
-                        .border(2.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(20.dp)),
-                )
-
-                // Processing Spinner
-                if (state is ScanUiState.Analyzing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color.White,
-                    )
-                }
-
-                // Result Bottom Sheet with proper navigation bar padding
-                if (state is ScanUiState.ResultReady) {
-                    val result = (state as ScanUiState.ResultReady).recommendation
-                    ResultOverlay(
-                        recommendation = result,
-                        onRetake = { viewModel.resetScan() },
-                        onManualFallback = { showManualDialog = true },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding(),
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Camera Permission")
-                    }
-                }
             }
 
-            if (showManualDialog) {
-                ManualSelectionDialog(
-                    onItemSelected = { selectedClassId ->
-                        showManualDialog = false
-                        viewModel.onManualSelect(selectedClassId)
-                    },
-                    onDismiss = { showManualDialog = false },
+            // Viewfinder Reticle
+            Box(
+                modifier = Modifier
+                    .size(250.dp)
+                    .align(Alignment.Center)
+                    .border(2.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(20.dp)),
+            )
+
+            // Analysis Spinner
+            if (state is ScanUiState.Analyzing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Color.White,
                 )
             }
+
+            // Result Sheet sits flush at BottomCenter
+            if (state is ScanUiState.ResultReady) {
+                val result = (state as ScanUiState.ResultReady).recommendation
+                ResultOverlay(
+                    recommendation = result,
+                    onRetake = { viewModel.resetScan() },
+                    onManualFallback = { showManualDialog = true },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                    Text("Grant Camera Permission")
+                }
+            }
+        }
+
+        if (showManualDialog) {
+            ManualSelectionDialog(
+                onItemSelected = { selectedClassId ->
+                    showManualDialog = false
+                    viewModel.onManualSelect(selectedClassId)
+                },
+                onDismiss = { showManualDialog = false },
+            )
         }
     }
 }
 
 @Composable
 fun CameraView(
-    onImageCaptured: (Bitmap, Int) -> Unit,
+    isScanningActive: Boolean,
+    onImageCaptured: (Bitmap) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -208,31 +223,41 @@ fun CameraView(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Capture Floating Action Button with Navigation Bar Inset
-        FloatingActionButton(
-            onClick = {
-                imageCapture?.takePicture(
-                    cameraExecutor,
-                    object : ImageCapture.OnImageCapturedCallback() {
-                        override fun onCaptureSuccess(image: ImageProxy) {
-                            val rotation = image.imageInfo.rotationDegrees
-                            val bitmap = image.toBitmap()
-                            image.close()
-                            onImageCaptured(bitmap, rotation)
-                        }
+        // Capture Floating Action Button (only visible when actively scanning)
+        if (isScanningActive) {
+            FloatingActionButton(
+                onClick = {
+                    imageCapture?.takePicture(
+                        cameraExecutor,
+                        object : ImageCapture.OnImageCapturedCallback() {
+                            override fun onCaptureSuccess(image: ImageProxy) {
+                                val rotation = image.imageInfo.rotationDegrees
+                                val rawBitmap = image.toBitmap()
+                                image.close()
 
-                        override fun onError(exception: ImageCaptureException) {
-                        }
-                    },
-                )
-            },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 32.dp),
-            containerColor = Color.White,
-        ) {
-            Text("Scan", color = Color.Black)
+                                // Rotate bitmap upright matching screen orientation
+                                val orientedBitmap = if (rotation != 0) {
+                                    val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+                                    Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                                } else {
+                                    rawBitmap
+                                }
+                                onImageCaptured(orientedBitmap)
+                            }
+
+                            override fun onError(exception: ImageCaptureException) {
+                            }
+                        },
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 32.dp),
+                containerColor = Color.White,
+            ) {
+                Text("Scan", color = Color.Black)
+            }
         }
     }
 }

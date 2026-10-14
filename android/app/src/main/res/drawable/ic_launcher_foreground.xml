@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Container Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M39,44 L43,76 C43.5,79.3 46.2,82 49.5,82 L58.5,82 C61.8,82 64.5,79.3 65,76 L69,44 Z"/>
+
+    <!-- Bin Lid -->
+    <path
+        android:fillColor="#E8F5E9"
+        android:pathData="M34,38 L74,38 C75.1,38 76,38.9 76,40 L76,42 L32,42 L32,40 C32,38.9 32.9,38 34,38 Z"/>
+
+    <!-- Bin Handle -->
+    <path
+        android:fillColor="#C8E6C9"
+        android:pathData="M48,34 L60,34 C61.1,34 62,34.9 62,36 L62,38 L46,38 L46,36 C46,34.9 46.9,34 48,34 Z"/>
+
+    <!-- Center Organic Leaf Motif (Embossed Green) -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M54,50 C47,55 47,69 54,74 C61,69 61,55 54,50 Z"/>
+
+    <!-- Leaf Stem / Vein -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M54,55 L54,71"/>
+</vector>

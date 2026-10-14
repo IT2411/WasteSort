@@ -88,9 +88,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
 
-    // ML Runtime
+    // ML Runtime (Only core TFLite to avoid namespace collision)
     implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
 
     // Testing
     testImplementation(libs.junit)

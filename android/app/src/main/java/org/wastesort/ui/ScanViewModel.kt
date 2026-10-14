@@ -31,16 +31,17 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         rulesEngine = RulesEngine.fromAssets(application)
     }
 
-    fun onFrameCaptured(bitmap: Bitmap, rotationDegrees: Int) {
+    fun onFrameCaptured(bitmap: Bitmap) {
         if (_uiState.value is ScanUiState.Analyzing) return
 
+        _uiState.value = ScanUiState.Analyzing(bitmap)
+
         viewModelScope.launch(Dispatchers.Default) {
-            _uiState.value = ScanUiState.Analyzing
             try {
-                val classification = classifier?.classify(bitmap, rotationDegrees)
+                val classification = classifier?.classify(bitmap, 0)
                     ?: ClassificationOutput("unknown", 0f, DecisionStatus.NOT_SURE)
                 val recommendation = rulesEngine.resolve(classification)
-                _uiState.value = ScanUiState.ResultReady(recommendation)
+                _uiState.value = ScanUiState.ResultReady(recommendation, bitmap)
             } catch (e: Exception) {
                 _uiState.value = ScanUiState.Error(e.localizedMessage ?: "Inference error")
             }
@@ -48,9 +49,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onManualSelect(classId: String) {
+        val currentBitmap = when (val state = _uiState.value) {
+            is ScanUiState.ResultReady -> state.frozenBitmap
+            is ScanUiState.Analyzing -> state.frozenBitmap
+            else -> Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+        }
         val classification = ClassificationOutput(classId, 1.0f, DecisionStatus.CONFIDENT)
         val recommendation = rulesEngine.resolve(classification)
-        _uiState.value = ScanUiState.ResultReady(recommendation)
+        _uiState.value = ScanUiState.ResultReady(recommendation, currentBitmap)
     }
 
     fun resetScan() {
