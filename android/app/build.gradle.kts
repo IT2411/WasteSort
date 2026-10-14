@@ -62,7 +62,9 @@ android {
 spotless {
     kotlin {
         target("**/*.kt")
-        ktlint("1.1.1")
+        ktlint("1.1.1").editorConfigOverride(
+            mapOf("ktlint_function_naming_ignore_when_annotated_with" to "Composable"),
+        )
     }
     kotlinGradle {
         target("*.gradle.kts")
@@ -92,6 +94,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.androidx.ui.tooling)
