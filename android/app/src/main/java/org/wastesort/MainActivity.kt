@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.camera.core.CameraSelector
@@ -19,13 +20,13 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,9 +47,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import org.wastesort.ui.ScanUiState
 import org.wastesort.ui.ScanViewModel
+import org.wastesort.ui.components.ManualSelectionDialog
 import org.wastesort.ui.components.ResultOverlay
 import org.wastesort.ui.theme.WasteSortTheme
-import org.wastesort.vision.WasteClassifierClient
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -56,6 +57,8 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ScanViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Enable modern Edge-to-Edge display (transparent status & nav bars)
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -91,31 +94,32 @@ fun MainScreen(viewModel: ScanViewModel) {
     val state by viewModel.uiState.collectAsState()
     var showManualDialog by remember { mutableStateOf(false) }
 
+    // Scaffold with zero inner padding so camera extends under status bar
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-    ) { padding ->
+        containerColor = Color.Black,
+    ) { _ ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize(),
         ) {
             if (hasCameraPermission) {
+                // Camera extends to the physical edges of the display
                 CameraView(
-                    onImageCaptured = { bitmap ->
-                        viewModel.onFrameCaptured(bitmap)
+                    onImageCaptured = { bitmap, rotationDegrees ->
+                        viewModel.onFrameCaptured(bitmap, rotationDegrees)
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                // Reticle Overlay
+                // Viewfinder Reticle Centered
                 Box(
                     modifier = Modifier
-                        .size(240.dp)
+                        .size(250.dp)
                         .align(Alignment.Center)
-                        .border(2.dp, Color.White.copy(alpha = 0.8f), RoundedCornerShape(16.dp)),
+                        .border(2.5.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(20.dp)),
                 )
 
-                // Processing indicator
+                // Processing Spinner
                 if (state is ScanUiState.Analyzing) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
@@ -123,19 +127,23 @@ fun MainScreen(viewModel: ScanViewModel) {
                     )
                 }
 
-                // Result Bottom Sheet
+                // Result Bottom Sheet with proper navigation bar padding
                 if (state is ScanUiState.ResultReady) {
                     val result = (state as ScanUiState.ResultReady).recommendation
                     ResultOverlay(
                         recommendation = result,
                         onRetake = { viewModel.resetScan() },
                         onManualFallback = { showManualDialog = true },
-                        modifier = Modifier.align(Alignment.BottomCenter),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding(),
                     )
                 }
             } else {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -144,23 +152,14 @@ fun MainScreen(viewModel: ScanViewModel) {
                 }
             }
 
-            // Manual Selection Dropdown
             if (showManualDialog) {
-                DropdownMenu(
-                    expanded = showManualDialog,
-                    onDismissRequest = { showManualDialog = false },
-                    modifier = Modifier.align(Alignment.Center),
-                ) {
-                    WasteClassifierClient.CLASS_NAMES.forEach { className ->
-                        DropdownMenuItem(
-                            text = { Text(className.replace("_", " ")) },
-                            onClick = {
-                                showManualDialog = false
-                                viewModel.onManualSelect(className)
-                            },
-                        )
-                    }
-                }
+                ManualSelectionDialog(
+                    onItemSelected = { selectedClassId ->
+                        showManualDialog = false
+                        viewModel.onManualSelect(selectedClassId)
+                    },
+                    onDismiss = { showManualDialog = false },
+                )
             }
         }
     }
@@ -168,7 +167,7 @@ fun MainScreen(viewModel: ScanViewModel) {
 
 @Composable
 fun CameraView(
-    onImageCaptured: (Bitmap) -> Unit,
+    onImageCaptured: (Bitmap, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -179,7 +178,9 @@ fun CameraView(
     Box(modifier = modifier) {
         AndroidView(
             factory = { ctx ->
-                val previewView = PreviewView(ctx)
+                val previewView = PreviewView(ctx).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
                 cameraProviderFuture.addListener({
@@ -207,16 +208,17 @@ fun CameraView(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Capture Floating Action Button
+        // Capture Floating Action Button with Navigation Bar Inset
         FloatingActionButton(
             onClick = {
                 imageCapture?.takePicture(
                     cameraExecutor,
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
+                            val rotation = image.imageInfo.rotationDegrees
                             val bitmap = image.toBitmap()
                             image.close()
-                            onImageCaptured(bitmap)
+                            onImageCaptured(bitmap, rotation)
                         }
 
                         override fun onError(exception: ImageCaptureException) {
@@ -226,6 +228,7 @@ fun CameraView(
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(bottom = 32.dp),
             containerColor = Color.White,
         ) {

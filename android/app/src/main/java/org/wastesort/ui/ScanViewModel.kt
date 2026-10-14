@@ -31,13 +31,13 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         rulesEngine = RulesEngine.fromAssets(application)
     }
 
-    fun onFrameCaptured(bitmap: Bitmap) {
+    fun onFrameCaptured(bitmap: Bitmap, rotationDegrees: Int) {
         if (_uiState.value is ScanUiState.Analyzing) return
 
         viewModelScope.launch(Dispatchers.Default) {
             _uiState.value = ScanUiState.Analyzing
             try {
-                val classification = classifier?.classify(bitmap)
+                val classification = classifier?.classify(bitmap, rotationDegrees)
                     ?: ClassificationOutput("unknown", 0f, DecisionStatus.NOT_SURE)
                 val recommendation = rulesEngine.resolve(classification)
                 _uiState.value = ScanUiState.ResultReady(recommendation)

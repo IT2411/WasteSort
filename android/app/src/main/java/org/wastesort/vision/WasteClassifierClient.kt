@@ -2,6 +2,7 @@ package org.wastesort.vision
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import org.tensorflow.lite.Interpreter
 import org.wastesort.model.ClassificationOutput
 import org.wastesort.model.DecisionStatus
@@ -9,6 +10,7 @@ import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import kotlin.math.min
 
 class WasteClassifierClient(
     context: Context,
@@ -39,10 +41,26 @@ class WasteClassifierClient(
     }
 
     @Synchronized
-    fun classify(bitmap: Bitmap): ClassificationOutput {
-        val scaled = Bitmap.createScaledBitmap(bitmap, 224, 224, true)
-        inputBuffer.rewind()
+    fun classify(rawBitmap: Bitmap, rotationDegrees: Int = 0): ClassificationOutput {
+        // 1. Correct sensor rotation if needed
+        val rotatedBitmap = if (rotationDegrees != 0) {
+            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+            Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+        } else {
+            rawBitmap
+        }
 
+        // 2. Center-crop to 1:1 aspect ratio matching the reticle view
+        val size = min(rotatedBitmap.width, rotatedBitmap.height)
+        val xOffset = (rotatedBitmap.width - size) / 2
+        val yOffset = (rotatedBitmap.height - size) / 2
+        val croppedBitmap = Bitmap.createBitmap(rotatedBitmap, xOffset, yOffset, size, size)
+
+        // 3. Bilinear downsample to exact model input: 224 x 224
+        val scaled = Bitmap.createScaledBitmap(croppedBitmap, 224, 224, true)
+
+        // 4. Populate direct ByteBuffer with ImageNet normalization
+        inputBuffer.rewind()
         val intValues = IntArray(224 * 224)
         scaled.getPixels(intValues, 0, 224, 0, 0, 224, 224)
 
@@ -51,7 +69,6 @@ class WasteClassifierClient(
             val g = (pixel shr 8 and 0xFF) / 255.0f
             val b = (pixel and 0xFF) / 255.0f
 
-            // Channel-wise ImageNet normalization
             inputBuffer.putFloat((r - 0.485f) / 0.229f)
             inputBuffer.putFloat((g - 0.456f) / 0.224f)
             inputBuffer.putFloat((b - 0.406f) / 0.225f)
